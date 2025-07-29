@@ -1,0 +1,39 @@
+import re
+import logging
+from datetime import datetime
+import smtplib
+from email.mime.text import MIMEText
+
+# 設定
+LOG_FILE = "/var/log/auth.log"
+ALERT_PATTERN = r"Failed password|invalid user|authentication failure"
+EMAIL_TO = "admin@example.com"
+EMAIL_FROM = "alert@example.com" 
+
+def send_alert(message):
+    msg = MIMEText(message)
+    msg['Subject'] = "【警告】不正アクセスの可能性あり"
+    msg['From'] = EMAIL_FROM
+    msg['To'] = EMAIL_TO
+    try:
+        with smtplib.SMTP('localhost') as server:
+            server.send_message(msg)
+            logging.info("アラートメールを送信しました")
+    except Exception as e:
+        logging.error(f"メール送信に失敗しました: {e}")
+
+def scan_log():
+    logging.info("ログ監視を開始します")
+    try:
+        with open(LOG_FILE, "r") as f:
+            for line in f:
+                if re.search(ALERT_PATTERN, line):
+                    logging.warning("検知: " + line.strip())
+                    send_alert(line.strip())
+    except FileNotFoundError:
+        logging.error(f"ログファイルが見つかりません: {LOG_FILE}")
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    logging.info("スクリプト実行: %s", datetime.now())
+    scan_log()
